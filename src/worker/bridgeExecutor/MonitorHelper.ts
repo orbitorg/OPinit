@@ -92,14 +92,19 @@ class MonitorHelper {
     lcd: any,
     height: number,
     eventType: string
-  ): Promise<any[]> {
+  ): Promise<[boolean, any[]]> {
     const searchRes = await lcd.tx.search({
       events: [{ key: 'tx.height', value: (height + 1).toString() }]
     });
-    return searchRes.txs
-      .flatMap((tx) => tx.logs ?? [])
-      .flatMap((log) => log.events)
-      .filter((evt) => evt.type === eventType);
+
+    const isEmpty = searchRes.txs.length === 0;
+    return [
+      isEmpty,
+      searchRes.txs
+        .flatMap((tx) => tx.logs ?? [])
+        .flatMap((log) => log.events)
+        .filter((evt) => evt.type === eventType)
+    ];
   }
 
   public eventsToAttrMap(event: any): { [key: string]: string } {

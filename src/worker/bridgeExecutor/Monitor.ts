@@ -1,5 +1,5 @@
 import * as Bluebird from 'bluebird';
-import { RPCSocket } from 'lib/rpc';
+import { RPCClient, RPCSocket } from 'lib/rpc';
 import { StateEntity } from 'orm';
 import { DataSource } from 'typeorm';
 import MonitorHelper from './MonitorHelper';
@@ -11,7 +11,11 @@ export abstract class Monitor {
   protected db: DataSource;
   protected isRunning = false;
   helper: MonitorHelper = new MonitorHelper();
-  constructor(public socket: RPCSocket, public logger: winston.Logger) {}
+  constructor(
+    public socket: RPCSocket,
+    public rpcClient: RPCClient,
+    public logger: winston.Logger
+  ) {}
 
   public async run(): Promise<void> {
     const state = await this.db.getRepository(StateEntity).findOne({
@@ -41,18 +45,46 @@ export abstract class Monitor {
     while (this.isRunning) {
       try {
         const latestHeight = this.socket.latestHeight;
-        if (!latestHeight || this.syncedHeight >= latestHeight) continue;
-        if ((this.syncedHeight + 1) % 10 == 0 && this.syncedHeight !== 0) {
-          this.logger.info(`${this.name()} height ${this.syncedHeight + 1}`);
-        }
-        await this.handleEvents();
+        if (!latestHeight || !(latestHeight > this.syncedHeight)) continue;
 
-        this.syncedHeight += 1;
-        await this.handleBlock();
-        // update state
-        await this.db
-          .getRepository(StateEntity)
-          .update({ name: this.name() }, { height: this.syncedHeight });
+        const blockChain = await this.rpcClient.getBlockchain(
+          this.syncedHeight + 1,
+          // cap the query to fetch 20 blocks at maximum
+          Math.min(latestHeight, this.syncedHeight + 20)
+        );
+        if (blockChain === null) continue;
+
+        for (const metadata of blockChain?.block_metas.reverse()) {
+          const nextHeight = this.syncedHeight + 1;
+          if (nextHeight !== parseInt(metadata.header.height)) {
+            this.logger.error(
+              `try to fetch block meta for the height ${nextHeight}, but got ${metadata.header.height}`
+            );
+            break;
+          }
+
+          if (nextHeight % 10 === 0) {
+            this.logger.info(`${this.name()} height ${nextHeight} txNum ${metadata.num_txs}`);
+          }
+
+          if (parseInt(metadata.num_txs) === 0) {
+            this.syncedHeight++;
+            continue;
+          }
+
+          const ok: boolean = await this.handleEvents();
+          if (!ok) continue;
+
+          await this.handleBlock();
+
+          // TODO - should we put this before this.handleBlock()?
+          this.syncedHeight++;
+
+          // update state
+          await this.db
+            .getRepository(StateEntity)
+            .update({ name: this.name() }, { height: this.syncedHeight });
+        }
       } catch (err) {
         this.stop();
         throw new Error(`Error in ${this.name()} ${err}`);
@@ -63,7 +95,7 @@ export abstract class Monitor {
   }
 
   // eslint-disable-next-line
-  public async handleEvents(): Promise<void> {}
+  public async handleEvents(): Promise<any> {}
 
   // eslint-disable-next-line
   public async handleBlock(): Promise<void> {}

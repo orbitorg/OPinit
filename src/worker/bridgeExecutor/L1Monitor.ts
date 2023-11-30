@@ -21,7 +21,7 @@ import {
 } from 'orm';
 import { WalletType, getWallet, TxWallet } from 'lib/wallet';
 import { EntityManager } from 'typeorm';
-import { RPCSocket } from 'lib/rpc';
+import { RPCClient, RPCSocket } from 'lib/rpc';
 import { getDB } from './db';
 import winston from 'winston';
 import { getConfig } from 'config';
@@ -29,8 +29,12 @@ import { getConfig } from 'config';
 const config = getConfig();
 
 export class L1Monitor extends Monitor {
-  constructor(public socket: RPCSocket, logger: winston.Logger) {
-    super(socket, logger);
+  constructor(
+    public socket: RPCSocket,
+    public rpcClient: RPCClient,
+    logger: winston.Logger
+  ) {
+    super(socket, rpcClient, logger);
     [this.db] = getDB();
   }
 
@@ -113,17 +117,21 @@ export class L1Monitor extends Monitor {
     );
   }
 
-  public async handleEvents(): Promise<void> {
+  public async handleEvents(): Promise<any> {
+    const [isEmpty, events] = await this.helper.fetchEvents(
+      config.l1lcd,
+      this.syncedHeight,
+      'move'
+    );
+
+    // handle event always called when there is a tx in a block,
+    // so empty means, the tx indexing is still on going.
+    if (isEmpty) return false;
+
     await this.db.transaction(
       async (transactionalEntityManager: EntityManager) => {
         const msgs: Msg[] = [];
         const executor: TxWallet = getWallet(WalletType.Executor);
-
-        const events = await this.helper.fetchEvents(
-          config.l1lcd,
-          this.syncedHeight,
-          'move'
-        );
 
         for (const evt of events) {
           const attrMap = this.helper.eventsToAttrMap(evt);
@@ -184,5 +192,7 @@ export class L1Monitor extends Monitor {
         }
       }
     );
+
+    return true;
   }
 }

@@ -1,4 +1,4 @@
-import { RPCSocket } from 'lib/rpc';
+import { RPCClient, RPCSocket } from 'lib/rpc';
 import { Monitor } from './Monitor';
 import { L1Monitor } from './L1Monitor';
 import { L2Monitor } from './L2Monitor';
@@ -16,8 +16,16 @@ let monitors: Monitor[];
 
 async function runBot(): Promise<void> {
   monitors = [
-    new L1Monitor(new RPCSocket(config.L1_RPC_URI, 1000, logger), logger),
-    new L2Monitor(new RPCSocket(config.L2_RPC_URI, 1000, logger), logger)
+    new L1Monitor(
+      new RPCSocket(config.L1_RPC_URI, 1000, logger),
+      new RPCClient(config.L1_RPC_URI, logger),
+      logger
+    ),
+    new L2Monitor(
+      new RPCSocket(config.L2_RPC_URI, 1000, logger),
+      new RPCClient(config.L2_RPC_URI, logger),
+      logger
+    )
   ];
   try {
     await Promise.all(

@@ -10,7 +10,7 @@ import { BridgeConfig, WithdrawalTx } from 'lib/types';
 import { EntityManager } from 'typeorm';
 import { BlockInfo } from '@initia/minitia.js';
 import { getDB } from './db';
-import { RPCSocket } from 'lib/rpc';
+import { RPCClient, RPCSocket } from 'lib/rpc';
 import winston from 'winston';
 import { getConfig } from 'config';
 
@@ -20,8 +20,12 @@ export class L2Monitor extends Monitor {
   submissionInterval: number;
   nextCheckpointBlockHeight: number;
 
-  constructor(public socket: RPCSocket, logger: winston.Logger) {
-    super(socket, logger);
+  constructor(
+    public socket: RPCSocket,
+    public rpcClient: RPCClient,
+    logger: winston.Logger
+  ) {
+    super(socket, rpcClient, logger);
     [this.db] = getDB();
   }
 
@@ -116,19 +120,22 @@ export class L2Monitor extends Monitor {
         l2Denom: symbol
       },
       { isChecked: true }
-    )
+    );
   }
 
+  public async handleEvents(): Promise<any> {
+    const [isEmpty, events] = await this.helper.fetchEvents(
+      config.l2lcd,
+      this.syncedHeight,
+      'move'
+    );
 
-  public async handleEvents(): Promise<void> {
+    // handle event always called when there is a tx in a block,
+    // so empty means, the tx indexing is still on going.
+    if (isEmpty) return false;
+
     await this.db.transaction(
       async (transactionalEntityManager: EntityManager) => {
-        const events = await this.helper.fetchEvents(
-          config.l2lcd,
-          this.syncedHeight,
-          'move'
-        );
-
         for (const evt of events) {
           const attrMap = this.helper.eventsToAttrMap(evt);
           const data: { [key: string]: string } =
@@ -153,6 +160,8 @@ export class L2Monitor extends Monitor {
         }
       }
     );
+
+    return true;
   }
 
   private async saveMerkleRootAndProof(
