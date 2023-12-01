@@ -78,9 +78,8 @@ export abstract class Monitor {
             this.retryNum++;
             if (this.retryNum * INTERVAL_MONITOR >= 30_000) {
               // throw error when tx index data is not found during 30s after block stored.
-              throw new Error(
-                `tx index data is not found for the height ${nextHeight}`
-              );
+              this.rpcClient.rotateRPC();
+              throw new Error(`tx index data is not found for the height ${nextHeight}`)
             }
 
             break;

@@ -1,23 +1,19 @@
 import Bridge from './utils/Bridge';
-import DockerHelper from './utils/DockerHelper';
-import * as path from 'path';
 import { startBatch } from 'worker/batchSubmitter';
 import { startOutput } from 'worker/outputSubmitter';
 import { startExecutor } from 'worker/bridgeExecutor';
 import { startChallenger } from 'worker/challenger';
 import { Config } from 'config';
 import { TxBot } from './utils/TxBot';
-import { computeCoinMetadata, normalizeMetadata } from 'lib/lcd';
-import { checkHealth } from './utils/helper';
 
 const config = Config.getConfig();
-const docker = new DockerHelper(path.join(__dirname, '..', '..'));
+
+const SUBMISSION_INTERVAL = 10;
+const FINALIZED_TIME = 10;
+const L2_START_BLOCK_HEIGHT = 1;
 
 async function setup() {
-  await docker.start();
-  await checkHealth(config.L1_LCD_URI, 20_000);
-  await checkHealth(config.L2_LCD_URI, 20_000);
-  await setupBridge(10, 10, 1);
+  await setupBridge(SUBMISSION_INTERVAL, FINALIZED_TIME, L2_START_BLOCK_HEIGHT);
 }
 
 async function setupBridge(
@@ -30,9 +26,8 @@ async function setupBridge(
     finalizedTime,
     l2StartBlockHeight,
     config.L2ID,
-    path.join(__dirname, 'contract')
   );
-  const UINIT_METADATA = normalizeMetadata(computeCoinMetadata('0x1', 'uinit')); // '0x8e4733bdabcf7d4afc3d14f0dd46c9bf52fb0fce9e4b996c939e195b8bc891d9'
+  const UINIT_METADATA = '0x8e4733bdabcf7d4afc3d14f0dd46c9bf52fb0fce9e4b996c939e195b8bc891d9'
 
   await bridge.deployBridge(UINIT_METADATA);
   console.log('Bridge deployed');
@@ -41,10 +36,10 @@ async function setupBridge(
 async function startBot() {
   try {
     await Promise.all([
-      startBatch(),
+      // startBatch(),
       startExecutor(),
-      startChallenger(),
-      startOutput()
+      // startChallenger(),
+      // startOutput()
     ]);
   } catch (err) {
     console.log(err);

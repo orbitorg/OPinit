@@ -14,6 +14,7 @@ import { getConfig } from 'config';
 const config = getConfig();
 let monitors: Monitor[];
 
+
 async function runBot(): Promise<void> {
   monitors = [
     new L1Monitor(

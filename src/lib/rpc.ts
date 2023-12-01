@@ -11,9 +11,17 @@ export class RPCSocket {
   public updateTimer: NodeJS.Timer;
   public latestHeight?: number;
   logger: winston.Logger;
+  rpcUrl: string;
+  curRPCUrlIndex: number;
 
-  constructor(rpcUrl: string, public interval: number, logger: winston.Logger) {
-    this.wsUrl = rpcUrl.replace('http', 'ws') + '/websocket';
+  constructor(public rpcUrls: string[], public interval: number, logger: winston.Logger) {
+    if (this.rpcUrls.length === 0) {
+      throw new Error('RPC URLs list cannot be empty');
+    }
+    this.curRPCUrlIndex = 0;
+    this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
+
+    this.wsUrl = this.rpcUrl.replace('http', 'ws') + '/websocket';
     this.logger = logger;
   }
 
@@ -139,7 +147,22 @@ export class RPCSocket {
 }
 
 export class RPCClient {
-  constructor(public rpcUrl: string, public logger: winston.Logger) {}
+  private curRPCUrlIndex = 0;
+  private rpcUrl: string;
+
+  constructor(public rpcUrls: string[], public logger: winston.Logger) {
+    if (this.rpcUrls.length === 0 ){
+      throw new Error('RPC URLs list cannot be empty');
+    }
+    this.curRPCUrlIndex = 0;
+    this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
+  }
+
+  public rotateRPC() {
+    this.curRPCUrlIndex = (this.curRPCUrlIndex + 1) % this.rpcUrls.length;
+    this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
+    this.logger.info(`RPC URL rotated to ${this.rpcUrl}`);
+  }
 
   async getRequest(
     path: string,

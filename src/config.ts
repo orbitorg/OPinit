@@ -4,10 +4,10 @@ import { LCDClient as InitiaLCDClient } from '@initia/initia.js';
 interface ConfigInterface {
   EXECUTOR_PORT: number;
   BATCH_PORT: number;
-  L1_LCD_URI: string;
-  L1_RPC_URI: string;
-  L2_LCD_URI: string;
-  L2_RPC_URI: string;
+  L1_LCD_URI: string[];
+  L1_RPC_URI: string[];
+  L2_LCD_URI: string[];
+  L2_RPC_URI: string[];
   EXECUTOR_URI: string;
   L2ID: string;
   OUTPUT_SUBMITTER_MNEMONIC: string;
@@ -41,10 +41,10 @@ export class Config implements ConfigInterface {
 
   EXECUTOR_PORT: number;
   BATCH_PORT: number;
-  L1_LCD_URI: string;
-  L1_RPC_URI: string;
-  L2_LCD_URI: string;
-  L2_RPC_URI: string;
+  L1_LCD_URI: string[];
+  L1_RPC_URI: string[];
+  L2_LCD_URI: string[];
+  L2_RPC_URI: string[];
   EXECUTOR_URI: string;
   L2ID: string;
   OUTPUT_SUBMITTER_MNEMONIC: string;
@@ -75,10 +75,10 @@ export class Config implements ConfigInterface {
 
     this.EXECUTOR_PORT = parseInt(EXECUTOR_PORT);
     this.BATCH_PORT = parseInt(BATCH_PORT);
-    this.L1_LCD_URI = L1_LCD_URI;
-    this.L1_RPC_URI = L1_RPC_URI;
-    this.L2_LCD_URI = L2_LCD_URI;
-    this.L2_RPC_URI = L2_RPC_URI;
+    this.L1_LCD_URI = L1_LCD_URI.split(',');
+    this.L1_RPC_URI = L1_RPC_URI.split(',');
+    this.L2_LCD_URI = L2_LCD_URI.split(',');
+    this.L2_RPC_URI = L2_RPC_URI.split(',');
     this.EXECUTOR_URI = EXECUTOR_URI;
     this.L2ID = L2ID;
     this.OUTPUT_SUBMITTER_MNEMONIC = OUTPUT_SUBMITTER_MNEMONIC;
@@ -86,11 +86,11 @@ export class Config implements ConfigInterface {
     this.BATCH_SUBMITTER_MNEMONIC = BATCH_SUBMITTER_MNEMONIC;
     this.CHALLENGER_MNEMONIC = CHALLENGER_MNEMONIC;
     this.USE_LOG_FILE = !!JSON.parse(USE_LOG_FILE);
-    this.l1lcd = new InitiaLCDClient(L1_LCD_URI, {
+    this.l1lcd = new InitiaLCDClient(this.L1_LCD_URI[0], {
       gasPrices: '0.15uinit',
       gasAdjustment: '1.75'
     });
-    this.l2lcd = new MinitiaLCDClient(L2_LCD_URI, {
+    this.l2lcd = new MinitiaLCDClient(this.L2_LCD_URI[0], {
       gasPrices: '0.15umin',
       gasAdjustment: '1.75'
     });
@@ -109,34 +109,6 @@ export class Config implements ConfigInterface {
 }
 
 export function getConfig() {
-  if (process.env.DEVELOPMENT_MODE === 'test') {
-    process.env.TYPEORM_HOST = 'localhost';
-    process.env.TYPEORM_USERNAME = 'user';
-    process.env.TYPEORM_PASSWORD = 'password';
-    process.env.TYPEORM_DATABASE = 'rollup';
-    process.env.TYPEORM_PORT = '5433';
-
-    const testConfig = {
-      EXECUTOR_PORT: 3000,
-      BATCH_PORT: 3001,
-      L1_LCD_URI: 'http://localhost:1317',
-      L1_RPC_URI: 'http://localhost:26657',
-      L2_LCD_URI: 'http://localhost:1318',
-      L2_RPC_URI: 'http://localhost:26658',
-      EXECUTOR_URI: 'http://localhost:3000',
-      TYPEORM_HOST: 'http://localhost:5433'
-    };
-    Config.updateConfig({
-      ...testConfig,
-      l1lcd: new InitiaLCDClient(testConfig.L1_LCD_URI, {
-        gasAdjustment: '1.75'
-      }),
-      l2lcd: new MinitiaLCDClient(testConfig.L2_LCD_URI, {
-        gasPrices: '0.15umin',
-        gasAdjustment: '1.75'
-      })
-    });
-  }
 
   return Config.getConfig();
 }
