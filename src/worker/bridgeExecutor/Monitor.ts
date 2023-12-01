@@ -8,8 +8,8 @@ import { INTERVAL_MONITOR } from 'config';
 
 export abstract class Monitor {
   public syncedHeight: number;
-  protected retryNum: number;
   protected db: DataSource;
+  protected retryNum = 0;
   protected isRunning = false;
   helper: MonitorHelper = new MonitorHelper();
   constructor(
