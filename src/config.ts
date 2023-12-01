@@ -88,11 +88,11 @@ export class Config implements ConfigInterface {
     this.USE_LOG_FILE = !!JSON.parse(USE_LOG_FILE);
     this.l1lcd = new InitiaLCDClient(L1_LCD_URI, {
       gasPrices: '0.15uinit',
-      gasAdjustment: '10'
+      gasAdjustment: '1.75'
     });
     this.l2lcd = new MinitiaLCDClient(L2_LCD_URI, {
       gasPrices: '0.15umin',
-      gasAdjustment: '10'
+      gasAdjustment: '1.75'
     });
   }
 
@@ -129,11 +129,11 @@ export function getConfig() {
     Config.updateConfig({
       ...testConfig,
       l1lcd: new InitiaLCDClient(testConfig.L1_LCD_URI, {
-        gasAdjustment: '10'
+        gasAdjustment: '1.75'
       }),
       l2lcd: new MinitiaLCDClient(testConfig.L2_LCD_URI, {
         gasPrices: '0.15umin',
-        gasAdjustment: '10'
+        gasAdjustment: '1.75'
       })
     });
   }
