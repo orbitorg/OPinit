@@ -20,7 +20,6 @@ export class RPCSocket {
     }
     this.curRPCUrlIndex = 0;
     this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
-
     this.wsUrl = this.rpcUrl.replace('http', 'ws') + '/websocket';
     this.logger = logger;
   }
@@ -28,6 +27,13 @@ export class RPCSocket {
   public initialize(): void {
     this.connect();
     this.updateTimer = setTimeout(() => this.tick(), this.interval);
+  }
+
+  public rotateRPC() {
+    this.curRPCUrlIndex = (this.curRPCUrlIndex + 1) % this.rpcUrls.length;
+    this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
+    this.wsUrl = this.rpcUrl.replace('http', 'ws') + '/websocket';
+    this.logger.info(`Rotate RPC to ${this.rpcUrl}`);
   }
 
   public stop(): void {
@@ -109,6 +115,7 @@ export class RPCSocket {
   }
 
   protected onDisconnect(code: number, reason: string): void {
+    this.rotateRPC();
     this.logger.info(
       `${this.constructor.name}: websocket disconnected (${code}: ${reason})`
     );
@@ -161,7 +168,7 @@ export class RPCClient {
   public rotateRPC() {
     this.curRPCUrlIndex = (this.curRPCUrlIndex + 1) % this.rpcUrls.length;
     this.rpcUrl = this.rpcUrls[this.curRPCUrlIndex]
-    this.logger.info(`RPC URL rotated to ${this.rpcUrl}`);
+    this.logger.info(`Rotate RPC to ${this.rpcUrl}`);
   }
 
   async getRequest(
