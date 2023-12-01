@@ -65,9 +65,7 @@ export abstract class Monitor {
           }
 
           if (nextHeight % 10 === 0) {
-            this.logger.info(
-              `${this.name()} height ${nextHeight}`
-            );
+            this.logger.info(`${this.name()} height ${nextHeight}`);
           }
 
           if (parseInt(metadata.num_txs) === 0) {
@@ -77,14 +75,15 @@ export abstract class Monitor {
 
           const ok: boolean = await this.handleEvents();
           if (!ok) {
-
             this.retryNum++;
             if (this.retryNum * INTERVAL_MONITOR >= 30_000) {
               // throw error when tx index data is not found during 30s after block stored.
-              throw new Error(`tx index data is not found for the height ${nextHeight}`)
+              throw new Error(
+                `tx index data is not found for the height ${nextHeight}`
+              );
             }
 
-            continue;
+            break;
           }
 
           this.retryNum = 0;
@@ -97,6 +96,9 @@ export abstract class Monitor {
           await this.db
             .getRepository(StateEntity)
             .update({ name: this.name() }, { height: this.syncedHeight });
+
+          // add delay to prevent spamming
+          await Bluebird.Promise.delay(INTERVAL_MONITOR);
         }
       } catch (err) {
         this.stop();
