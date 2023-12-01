@@ -126,7 +126,7 @@ export class L2Monitor extends Monitor {
   public async handleEvents(): Promise<any> {
     const [isEmpty, events] = await this.helper.fetchEvents(
       config.l2lcd,
-      this.syncedHeight,
+      this.syncedHeight + 1,
       'move'
     );
 

@@ -94,7 +94,7 @@ class MonitorHelper {
     eventType: string
   ): Promise<[boolean, any[]]> {
     const searchRes = await lcd.tx.search({
-      events: [{ key: 'tx.height', value: (height + 1).toString() }]
+      events: [{ key: 'tx.height', value: height.toString() }]
     });
 
     const isEmpty = searchRes.txs.length === 0;

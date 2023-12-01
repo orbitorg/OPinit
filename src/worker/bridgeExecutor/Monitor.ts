@@ -8,6 +8,7 @@ import { INTERVAL_MONITOR } from 'config';
 
 export abstract class Monitor {
   public syncedHeight: number;
+  protected retryNum: number;
   protected db: DataSource;
   protected isRunning = false;
   helper: MonitorHelper = new MonitorHelper();
@@ -50,6 +51,7 @@ export abstract class Monitor {
         const blockChain = await this.rpcClient.getBlockchain(
           this.syncedHeight + 1,
           // cap the query to fetch 20 blocks at maximum
+          // DO NOT CHANGE THIS, hard limit is 20 in cometbft.
           Math.min(latestHeight, this.syncedHeight + 20)
         );
         if (blockChain === null) continue;
@@ -57,14 +59,15 @@ export abstract class Monitor {
         for (const metadata of blockChain?.block_metas.reverse()) {
           const nextHeight = this.syncedHeight + 1;
           if (nextHeight !== parseInt(metadata.header.height)) {
-            this.logger.error(
-              `try to fetch block meta for the height ${nextHeight}, but got ${metadata.header.height}`
+            throw new Error(
+              `expected block meta is the height ${nextHeight}, but got ${metadata.header.height}`
             );
-            break;
           }
 
           if (nextHeight % 10 === 0) {
-            this.logger.info(`${this.name()} height ${nextHeight} txNum ${metadata.num_txs}`);
+            this.logger.info(
+              `${this.name()} height ${nextHeight}`
+            );
           }
 
           if (parseInt(metadata.num_txs) === 0) {
@@ -73,8 +76,18 @@ export abstract class Monitor {
           }
 
           const ok: boolean = await this.handleEvents();
-          if (!ok) continue;
+          if (!ok) {
 
+            this.retryNum++;
+            if (this.retryNum * INTERVAL_MONITOR >= 30_000) {
+              // throw error when tx index data is not found during 30s after block stored.
+              throw new Error(`tx index data is not found for the height ${nextHeight}`)
+            }
+
+            continue;
+          }
+
+          this.retryNum = 0;
           await this.handleBlock();
 
           // TODO - should we put this before this.handleBlock()?
